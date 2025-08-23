@@ -4,7 +4,7 @@ A comprehensive Model Context Protocol (MCP) server for healthcare data analysis
 
 ## Motivation
 To get a quick MCP setup that can be used to service most of the common data questions that get floated over to analysts and are simple data pulls. Something like this could be utilized at healthcare companies to free up time for analysts to work on more complicated analytics, while also providing well-defined queries to be reused across an org. 
-- Tuva Health provides a typical database setup that translates well across the industry. 
+- [The Tuva Project](https://github.com/tuva-health) provides dbt project to build a typical database setup that translates well across the industry. 
 - Warp (I think it was using Sonnet) did pretty well with the initial setup. I had the demo data loaded to bigquery and MCP toolbox for databases set up so it could get context from the existing tables. The queries were wrong, but only required minimal fixes. The scaffolding is there for analysts to write official queries to be used by the server.
 
 ## Features
@@ -25,6 +25,9 @@ To get a quick MCP setup that can be used to service most of the common data que
 - Population health insights
 - Care gap identification
 - Financial performance monitoring
+
+![alt text](sample_prompt.png)
+![alt text](sample_response.png)
 
 ## Setup
 
@@ -58,7 +61,7 @@ Configure your MCP client (e.g., Claude Desktop) with:
         "-e", "GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json",
         "-e", "GCP_PROJECT_ID=your-gcp-project-id",
         "-e", "BIGQUERY_DATASET_PREFIX=your-dataset-prefix",
-        "ghcr.io/yourusername/mcp_healthcare_data:latest"
+        "ghcr.io/dslans/mcp_healthcare_data:latest"
       ]
     }
   }
@@ -78,10 +81,10 @@ If you've authenticated with `gcloud auth application-default login`:
         "--rm", 
         "-i",
         "--pull=always",
-        "-v", "~/.config/gcloud:/home/appuser/.config/gcloud:ro",
+        "-v", "your-home-directory/.config/gcloud:/home/appuser/.config/gcloud:ro",
         "-e", "GCP_PROJECT_ID=your-gcp-project-id",
         "-e", "BIGQUERY_DATASET_PREFIX=your-dataset-prefix",
-        "ghcr.io/yourusername/mcp_healthcare_data:latest"
+        "ghcr.io/dslans/mcp_healthcare_data:latest"
       ]
     }
   }
@@ -89,23 +92,19 @@ If you've authenticated with `gcloud auth application-default login`:
 ```
 
 **Replace the placeholders:**
+- `your-home-directory` with your home directory (`/Users/dslans`)
 - `/path/to/your/service-account.json` with your actual service account file path (Option A)
-- `your-gcp-project-id` with your Google Cloud Project ID
-- `your-dataset-prefix` with your BigQuery dataset prefix
-- `yourusername` with the actual GitHub username/organization
+- `your-gcp-project-id` with your Google Cloud Project ID (For example prj-tuva-demo)
+- `your-dataset-prefix` with your BigQuery dataset prefix (Can be just the project name ending with `.`  like `prj-tuva-demo.` or leave blank)
 
 **Restart your MCP client** and start using the healthcare analytics tools!
-
-> **Note**: Replace `yourusername` with your actual GitHub username. The Docker image will be available after you push to GitHub and the Actions workflow completes.
-
-For detailed Docker usage instructions, see [DOCKER_USAGE.md](DOCKER_USAGE.md).
 
 ### Option 2: Local Installation
 
 For developers who want to run the MCP server locally or customize the code.
 
 #### Prerequisites
-- Python 3.8+
+- Python 3.9+
 - MCP-compatible client (Claude Desktop, Warp, etc.)
 - Google Cloud Project with BigQuery API enabled
 - Tuva Health demo data loaded in BigQuery
@@ -168,7 +167,6 @@ For **Claude Desktop**, edit `claude_desktop_config.json`:
 }
 ```
 
-For **Warp Terminal**, create or update your MCP configuration.
 
 7. **Restart your MCP client** and start using the healthcare analytics tools!
 
@@ -333,6 +331,62 @@ monthly_quality = get_quality_measures_summary(year="2018")
 monthly_readmissions = get_readmissions_analysis(year="2018")
 ```
 
+## Example Questions
+
+Once your MCP server is configured, you can ask natural language questions in your MCP client (Claude Desktop, Warp, etc.). Here are some examples:
+
+### 📊 **Population Health & Demographics**
+- "Show me the patient demographics for 2018, including age group breakdowns"
+- "What's the gender distribution of our patient population?"
+- "How many patients do we have enrolled and what's the average age?"
+
+### 💰 **Financial & Cost Analysis**
+- "Calculate the PMPM costs for all service categories in 2018"
+- "Who are our highest cost patients above $20,000 in total spend?"
+- "Show me per-member-per-month analysis for Medicare patients only"
+- "What are the top 10 most expensive service categories by total cost?"
+
+### 🏥 **Healthcare Utilization**
+- "Analyze healthcare utilization patterns for 2018"
+- "Show me Emergency Department utilization statistics"
+- "What's the breakdown of claims by service category?"
+- "How many unique patients had medical claims last year?"
+
+### 📈 **Quality Measures & Performance**
+- "What are our quality measure performance rates for 2018?"
+- "Show me diabetes medication adherence scores"
+- "Analyze our HEDIS quality measures and compliance rates"
+- "Which quality measures are we performing well on vs. need improvement?"
+
+### 🩺 **Clinical Analytics**
+- "What's the prevalence of chronic conditions in our population?"
+- "Show me diabetes prevalence rates and patient counts"
+- "Analyze 30-day readmission rates by condition category"
+- "What are the readmission patterns for heart failure patients?"
+
+### 🎯 **Risk Adjustment & HCC**
+- "Calculate HCC risk scores for our patient population"
+- "Show me risk score distribution and identify high-risk patients"
+- "Who are the patients with the highest risk adjustment scores?"
+
+### 🔍 **Care Management**
+- "Identify patients for case management based on high costs and readmissions"
+- "Which patients have both high costs and multiple chronic conditions?"
+- "Show me patients with diabetes who also have high utilization"
+
+### 📅 **Trend Analysis**
+- "Compare January 2018 PMPM costs to December 2018"
+- "Show me quarterly utilization trends throughout 2018"
+- "How did our quality measures change over the year?"
+
+### 🏢 **Business Intelligence**
+- "Generate a comprehensive population health report for 2018"
+- "What insights can you provide about our highest cost drivers?"
+- "Summarize our value-based care performance metrics"
+- "Create an executive summary of our healthcare analytics"
+
+These questions will automatically trigger the appropriate MCP tools and return structured healthcare analytics data that can be used for reporting, decision-making, and care management.
+
 ## Development
 
 ### Publishing Docker Image
@@ -418,8 +472,9 @@ def get_medication_adherence(
 1. **Authentication Errors**: Ensure your service account key path is correct in `.env`
 2. **Dataset Not Found**: Verify your `BIGQUERY_DATASET_PREFIX` matches your data location
 3. **Permission Denied**: Confirm your service account has BigQuery viewer/user roles
-4. **Import Errors**: Ensure all dependencies are installed with `uv pip install -r requirements.txt`
-5. **Docker Issues**: Check that Docker is running and you have sufficient disk space
+4. **Python Version Errors**: Ensure you're using Python 3.9+ (pandas 2.2.2 and numpy 1.26.4 require 3.9+)
+5. **Import Errors**: Ensure all dependencies are installed with `uv pip install -r requirements.txt`
+6. **Docker Issues**: Check that Docker is running and you have sufficient disk space
 
 ### Docker Troubleshooting
 

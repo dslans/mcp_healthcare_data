@@ -23,7 +23,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY healthcare_mcp_server.py .
-COPY healthcare_mcp_bridge.py .
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
