@@ -60,10 +60,8 @@ build/
 dist/
 *.egg-info/
 
-# Deployment files (we'll copy these separately if needed)
+# Build files
 docker-compose.yml
-Dockerfile
-.dockerignore
 
 # Project specific
 PROJECT_SUMMARY.md

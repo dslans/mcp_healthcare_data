@@ -28,44 +28,177 @@ To get a quick MCP setup that can be used to service most of the common data que
 
 ## Setup
 
-### Prerequisites
-- Python 3.8+
+### Option 1: Docker Deployment (Recommended)
+
+The easiest way to use this MCP server is with the pre-built Docker image from GitHub Container Registry.
+
+#### Prerequisites
+- Docker installed on your machine
+- MCP-compatible client (Claude Desktop, Warp, etc.)
 - Google Cloud Project with BigQuery API enabled
 - Tuva Health demo data loaded in BigQuery
 - Service account with BigQuery access
 
-### Installation
+#### Docker Authentication Options
 
-1. Install dependencies using uv (recommended):
-```bash
-uv pip install -r requirements.txt
+**Option A: Service Account Key (Recommended)**
+
+Configure your MCP client (e.g., Claude Desktop) with:
+```json
+{
+  "mcpServers": {
+    "healthcare-data": {
+      "command": "docker",
+      "args": [
+        "run", 
+        "--rm", 
+        "-i",
+        "--pull=always",
+        "-v", "/path/to/your/service-account.json:/app/credentials.json:ro",
+        "-e", "GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json",
+        "-e", "GCP_PROJECT_ID=your-gcp-project-id",
+        "-e", "BIGQUERY_DATASET_PREFIX=your-dataset-prefix",
+        "ghcr.io/yourusername/mcp_healthcare_data:latest"
+      ]
+    }
+  }
+}
 ```
 
-2. Set up environment variables by copying `.env.example` to `.env`:
+**Option B: Application Default Credentials (ADC)**
+
+If you've authenticated with `gcloud auth application-default login`:
+```json
+{
+  "mcpServers": {
+    "healthcare-data": {
+      "command": "docker",
+      "args": [
+        "run", 
+        "--rm", 
+        "-i",
+        "--pull=always",
+        "-v", "~/.config/gcloud:/home/appuser/.config/gcloud:ro",
+        "-e", "GCP_PROJECT_ID=your-gcp-project-id",
+        "-e", "BIGQUERY_DATASET_PREFIX=your-dataset-prefix",
+        "ghcr.io/yourusername/mcp_healthcare_data:latest"
+      ]
+    }
+  }
+}
+```
+
+**Replace the placeholders:**
+- `/path/to/your/service-account.json` with your actual service account file path (Option A)
+- `your-gcp-project-id` with your Google Cloud Project ID
+- `your-dataset-prefix` with your BigQuery dataset prefix
+- `yourusername` with the actual GitHub username/organization
+
+**Restart your MCP client** and start using the healthcare analytics tools!
+
+> **Note**: Replace `yourusername` with your actual GitHub username. The Docker image will be available after you push to GitHub and the Actions workflow completes.
+
+For detailed Docker usage instructions, see [DOCKER_USAGE.md](DOCKER_USAGE.md).
+
+### Option 2: Local Installation
+
+For developers who want to run the MCP server locally or customize the code.
+
+#### Prerequisites
+- Python 3.8+
+- MCP-compatible client (Claude Desktop, Warp, etc.)
+- Google Cloud Project with BigQuery API enabled
+- Tuva Health demo data loaded in BigQuery
+- Service account with BigQuery access
+
+#### Installation Steps
+
+1. **Clone the repository:**
+```bash
+git clone <your-repo-url>
+cd mcp_healthcare_data
+```
+
+2. **Install Python dependencies:**
+```bash
+# Using uv (recommended)
+uv pip install -r requirements.txt
+
+# Or using pip
+pip install -r requirements.txt
+```
+
+3. **Set up environment variables:**
 ```bash
 cp .env.example .env
 ```
 
-3. Configure your `.env` file with:
+4. **Configure your `.env` file:**
 ```
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
 GCP_PROJECT_ID=your-project-id
 BIGQUERY_DATASET_PREFIX=your_dataset_prefix
 ```
 
+5. **Test the server:**
+```bash
+# Test basic functionality
+python -c "import healthcare_mcp_server; print('Server imports successfully')"
+
+# Test with actual data (requires valid credentials)
+python test_server.py
+```
+
+6. **Configure your MCP client:**
+
+For **Claude Desktop**, edit `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "healthcare-analytics": {
+      "command": "python",
+      "args": ["/full/path/to/mcp_healthcare_data/healthcare_mcp_server.py"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/your/service-account-key.json",
+        "GCP_PROJECT_ID": "your-project-id",
+        "BIGQUERY_DATASET_PREFIX": "your_dataset_prefix"
+      }
+    }
+  }
+}
+```
+
+For **Warp Terminal**, create or update your MCP configuration.
+
+7. **Restart your MCP client** and start using the healthcare analytics tools!
+
+#### Local Development Authentication
+
+**Option A: Service Account Key**
+- Download and configure as shown in the Google Cloud Authentication section below
+
+**Option B: Application Default Credentials**
+```bash
+# Authenticate with your user account
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project YOUR_PROJECT_ID
+
+# Leave GOOGLE_APPLICATION_CREDENTIALS unset in .env
+```
+
 ### Google Cloud Authentication
 
-The server supports two authentication methods:
+#### Create Service Account
 
-#### Option 1: Service Account JSON File (Recommended for Local Development)
-
-1. Create a Google Cloud service account:
+1. **Create a service account:**
 ```bash
 gcloud iam service-accounts create healthcare-mcp-server \
     --display-name="Healthcare MCP Server"
 ```
 
-2. Grant BigQuery permissions:
+2. **Grant BigQuery permissions:**
 ```bash
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
     --member="serviceAccount:healthcare-mcp-server@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
@@ -76,60 +209,13 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
     --role="roles/bigquery.dataViewer"
 ```
 
-3. Download service account key:
+3. **Download service account key:**
 ```bash
 gcloud iam service-accounts keys create ~/healthcare-mcp-key.json \
     --iam-account=healthcare-mcp-server@YOUR_PROJECT_ID.iam.gserviceaccount.com
 ```
 
-4. Set the path in your `.env` file:
-```
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/healthcare-mcp-key.json
-```
-
-#### Option 2: Application Default Credentials (Recommended for Cloud Deployments)
-
-For cloud deployments (Google Cloud Run, Compute Engine, etc.), you can use ADC:
-
-1. Leave `GOOGLE_APPLICATION_CREDENTIALS` empty or unset in your `.env` file
-2. Ensure your compute environment has the necessary BigQuery permissions
-3. For local development with ADC:
-
-```bash
-# Authenticate with your user account
-gcloud auth application-default login
-
-# Or set up ADC with a service account
-gcloud auth application-default login --impersonate-service-account=healthcare-mcp-server@YOUR_PROJECT_ID.iam.gserviceaccount.com
-```
-
-## Usage
-
-### Running the Server
-
-Start the MCP server:
-```bash
-fastmcp run healthcare_mcp_server.py
-```
-
-Set up the config with your IDE, CLI assistant, etc.
-```json
-{
-  "mcpServers": {
-    "healthcare-analytics": {
-      "command": "python",
-      "args": ["/path/to/your/healthcare_mcp_server.py"],
-      "env": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/your/service-account-key.json",
-        "GCP_PROJECT_ID": "your-project-id",
-        "BIGQUERY_DATASET_PREFIX": "your_dataset_prefix."
-      }
-    }
-  }
-}
-```
-
-### Available Tools
+## Available Tools
 
 #### 1. Patient Demographics Analysis
 ```python
@@ -164,7 +250,7 @@ Calculates Per Member Per Month costs across different service categories with t
 #### 4. Quality Measures Summary
 ```python
 get_quality_measures_summary(
-    measure_name="adh_diabetes",  # Optional - use actual column names like 'adh_diabetes', 'cqm_130', etc.
+    measure_name="adh_diabetes",  # Optional
     year="2018"
 )
 ```
@@ -207,7 +293,7 @@ get_hcc_risk_scores(
 ```
 Provides HCC risk score distribution and population risk stratification.
 
-## Data Structure
+## Data Requirements
 
 The server expects Tuva Health formatted data with the following key datasets:
 - `core.*` - Claims, patient, eligibility, and encounter data
@@ -249,6 +335,43 @@ monthly_readmissions = get_readmissions_analysis(year="2018")
 
 ## Development
 
+### Publishing Docker Image
+
+To make the Docker image available for users:
+
+1. **Push to GitHub:**
+```bash
+git add .
+git commit -m "Add MCP healthcare data server"
+git push origin main
+```
+
+2. **GitHub Actions will automatically:**
+   - Build the Docker image
+   - Push to GitHub Container Registry (GHCR)
+   - Make it available at `ghcr.io/yourusername/mcp_healthcare_data:latest`
+
+3. **Check the Actions tab** in your GitHub repo to monitor the build progress.
+
+4. **Once published, users can pull the image:**
+```bash
+docker pull ghcr.io/yourusername/mcp_healthcare_data:latest
+```
+
+### Local Testing
+```bash
+# Test the Docker build locally
+./scripts/test-docker.sh
+
+# Test basic functionality (requires credentials)
+python -c "
+import healthcare_mcp_server as hms
+print('Testing connection...')
+result = hms.get_patient_demographics()
+print(f'Found {result[\"total_patients\"]} patients')
+"
+```
+
 ### Adding New Tools
 
 To add new healthcare analytics tools:
@@ -288,150 +411,6 @@ def get_medication_adherence(
     return df.iloc[0].to_dict()
 ```
 
-### Testing
-
-Run basic validation tests:
-```bash
-python -c "
-import healthcare_mcp_server as hms
-# Test BigQuery connection
-print('Testing connection...')
-result = hms.get_patient_demographics()
-print(f'Found {result[\"total_patients\"]} patients')
-"
-```
-
-## Docker Deployment
-
-Run the healthcare MCP server in a Docker container for easy deployment and isolation.
-
-### Quick Start
-
-1. **Build and run with Docker script:**
-```bash
-./scripts/docker-deploy.sh
-```
-
-2. **Manual Docker commands:**
-```bash
-# Build the image
-docker build -t healthcare-mcp-server .
-
-# Run the container
-docker run -d \
-  --name healthcare-mcp-server \
-  --port 8000:8000 \
-  --env-file .env \
-  healthcare-mcp-server
-```
-
-### Docker Script Options
-
-```bash
-# Custom port and container name
-./scripts/docker-deploy.sh --port 8080 --name my-mcp-server
-
-# Build only (don't run)
-./scripts/docker-deploy.sh --build-only
-
-# Help
-./scripts/docker-deploy.sh --help
-```
-
-### Docker Compose (Optional)
-
-Create a `docker-compose.yml` for easier management:
-```yaml
-version: '3.8'
-services:
-  healthcare-mcp:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    restart: unless-stopped
-```
-
-## Cloud Run Deployment
-
-Deploy to Google Cloud Run for scalable, serverless hosting.
-
-### Prerequisites
-
-- Google Cloud Project with billing enabled
-- `gcloud` CLI installed and authenticated
-- Required APIs will be enabled automatically
-
-### Quick Start
-
-1. **Deploy with Cloud Run script:**
-```bash
-./scripts/cloud-run-deploy.sh YOUR_PROJECT_ID
-```
-
-2. **With custom configuration:**
-```bash
-./scripts/cloud-run-deploy.sh MY_PROJECT \
-  --region us-west1 \
-  --dataset-prefix my_tuva_data \
-  --service-name my-healthcare-server
-```
-
-### Manual Cloud Run Deployment
-
-```bash
-# Enable required APIs
-gcloud services enable cloudbuild.googleapis.com run.googleapis.com
-
-# Build and deploy with Cloud Build
-gcloud builds submit --config cloudbuild.yaml
-
-# Or deploy directly
-gcloud run deploy healthcare-mcp-server \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
-```
-
-### Cloud Run Configuration
-
-- **Memory**: 1GB (configurable)
-- **CPU**: 1 vCPU (configurable) 
-- **Concurrency**: 100 requests per instance
-- **Autoscaling**: 0-10 instances
-- **Authentication**: Uses Google Cloud ADC
-
-### Environment Variables for Cloud Run
-
-Set these in the Cloud Run service:
-- `GCP_PROJECT_ID`: Your Google Cloud Project ID
-- `BIGQUERY_DATASET_PREFIX`: Your dataset prefix (e.g., `tuva_synthetic_data`)
-
-### MCP Client Configuration for Cloud Run
-
-Once deployed, configure your MCP client:
-```json
-{
-  "mcpServers": {
-    "healthcare-analytics": {
-      "command": "curl",
-      "args": ["-X", "POST", "https://your-service-url/mcp"],
-      "env": {}
-    }
-  }
-}
-```
-
-## Deployment Comparison
-
-| Option | Best For | Pros | Cons |
-|--------|----------|------|----- |
-| **Local Development** | Testing, development | Full control, easy debugging | Requires local setup |
-| **Docker** | Small teams, on-premises | Portable, isolated, consistent | Requires Docker knowledge |
-| **Cloud Run** | Production, scale | Serverless, auto-scaling, managed | Cloud vendor lock-in |
-
 ## Troubleshooting
 
 ### Common Issues
@@ -440,133 +419,31 @@ Once deployed, configure your MCP client:
 2. **Dataset Not Found**: Verify your `BIGQUERY_DATASET_PREFIX` matches your data location
 3. **Permission Denied**: Confirm your service account has BigQuery viewer/user roles
 4. **Import Errors**: Ensure all dependencies are installed with `uv pip install -r requirements.txt`
-5. **Docker Build Fails**: Check that Docker is running and you have sufficient disk space
-6. **Cloud Run Deploy Fails**: Verify your Google Cloud project has billing enabled
+5. **Docker Issues**: Check that Docker is running and you have sufficient disk space
 
 ### Docker Troubleshooting
 
+**"denied" error when pulling from GHCR:**
+```
+docker: Error response from daemon: Head "https://ghcr.io/v2/username/mcp_healthcare_data/manifests/latest": denied.
+```
+
+This means:
+1. The image hasn't been published yet (push to GitHub to trigger build)
+2. The repository is private (make it public or authenticate)
+3. Wrong username/repository name in the image URL
+
+**Other Docker issues:**
 ```bash
+# Build and test locally
+./scripts/test-docker.sh
+
 # View container logs
-docker logs healthcare-mcp-server
+docker logs <container-name>
 
 # Debug inside container
-docker exec -it healthcare-mcp-server bash
+docker exec -it <container-name> bash
 
-# Check container status
-docker ps -a
-```
-
-### Cloud Run Troubleshooting
-
-```bash
-# View service logs
-gcloud run services logs tail healthcare-mcp-server --region=us-central1
-
-# Check service status
-gcloud run services describe healthcare-mcp-server --region=us-central1
-
-# View recent builds
-gcloud builds list --limit=10
-```
-
-### Debugging
-
-Enable debug logging:
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-## Warp (or IDE) Integration
-
-### MCP Bridge
-
-For an integrated experience, use the MCP bridge that provides native MCP tools:
-
-1. **Install the bridge dependencies:**
-```bash
-pip install httpx
-```
-
-2. **Test the bridge:**
-```bash
-python healthcare_mcp_bridge.py --test
-```
-
-3. **Configure Warp with the bridge:**
-```json
-{
-  "mcpServers": {
-    "healthcare-analytics": {
-      "command": "python",
-      "args": ["/absolute/path/to/healthcare_mcp_bridge.py"],
-      "env": {
-        "CLOUD_RUN_URL": "https://your-healthcare-service.run.app"
-      }
-    }
-  }
-}
-```
-
-4. **Use natural language commands:**
-```
-"Get patient demographics for 2018"
-"Show me high-cost patients with threshold over $20,000"
-"Analyze readmissions for diabetes patients"
-```
-
-**Pros:**
-- ✅ Native MCP integration
-- ✅ Natural language interface
-- ✅ Automatic parameter handling
-- ✅ Type-safe tool definitions
-
-**Cons:**
-- ❌ Requires setup
-- ❌ Additional dependency layer
-
-
-### Available API Endpoints
-
-All endpoints accept JSON POST requests unless otherwise noted:
-
-| Endpoint | Method | Description |
-|----------|--------|--------------|
-| `/health` | GET | Service health check |
-| `/api/info` | GET | API documentation |
-| `/analytics/demographics` | POST | Patient demographics analysis |
-| `/analytics/utilization` | POST | Healthcare utilization summary |
-| `/analytics/pmpm` | POST | PMPM financial analysis |
-| `/analytics/quality-measures` | POST | Quality measures summary |
-| `/analytics/chronic-conditions` | POST | Chronic conditions prevalence |
-| `/analytics/high-cost-patients` | POST | High-cost patient identification |
-| `/analytics/readmissions` | POST | Readmissions analysis |
-| `/analytics/hcc-risk-scores` | POST | HCC risk scores analysis |
-
-### Example API Request Bodies
-
-**Demographics:**
-```json
-{
-  "start_date": "2018-01-01",
-  "end_date": "2018-12-31",
-  "age_groups": true
-}
-```
-
-**High-Cost Patients:**
-```json
-{
-  "cost_threshold": 10000.0,
-  "year": "2018",
-  "limit": 100
-}
-```
-
-**Quality Measures:**
-```json
-{
-  "measure_name": "adh_diabetes",
-  "year": "2018"
-}
+# Check if image exists
+docker pull ghcr.io/username/mcp_healthcare_data:latest
 ```

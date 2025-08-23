@@ -23,7 +23,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY healthcare_mcp_server.py .
-COPY cloud_run_server.py .
 COPY healthcare_mcp_bridge.py .
 
 # Create non-root user for security
@@ -31,12 +30,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port (Cloud Run will override this)
-EXPOSE 8000
+# Port not needed for MCP stdio protocol
+# EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import healthcare_mcp_server; print('Health check passed')" || exit 1
 
-# Default command - Cloud Run HTTP server (can be overridden for MCP protocol)
-CMD ["python", "cloud_run_server.py"]
+# Default command for MCP protocol via stdio
+CMD ["python", "healthcare_mcp_server.py"]

@@ -125,7 +125,7 @@ The server is designed for easy extension with additional healthcare analytics:
 @mcp.tool()
 def get_medication_adherence(
     therapeutic_class: str,
-    year: str = "2022"
+    year: str = "2018"
 ) -> Dict[str, Any]:
     # Implementation here
     pass
