@@ -87,24 +87,24 @@ def test_mcp_tools():
         # Test 1: Patient Demographics
         print("  Testing get_patient_demographics...")
         demographics = hms.get_patient_demographics(
-            start_date="2022-01-01",
-            end_date="2022-12-31"
+            start_date="2018-01-01",
+            end_date="2018-12-31"
         )
         print(f"    ✅ Found {demographics.get('total_patients', 0):,} patients")
         
         # Test 2: Utilization Summary
         print("  Testing get_utilization_summary...")
         utilization = hms.get_utilization_summary(
-            start_date="2022-01-01",
-            end_date="2022-12-31"
+            start_date="2018-01-01",
+            end_date="2018-12-31"
         )
         print(f"    ✅ Found {utilization.get('total_claims', 0):,} claims")
         
         # Test 3: PMPM Analysis
         print("  Testing get_pmpm_analysis...")
         pmpm = hms.get_pmpm_analysis(
-            start_date="2022-01-01",
-            end_date="2022-12-31"
+            start_date="2018-01-01",
+            end_date="2018-12-31"
         )
         print(f"    ✅ Analyzed {pmpm.get('months_analyzed', 0)} months of data")
         

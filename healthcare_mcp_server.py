@@ -65,8 +65,8 @@ def format_percentage(value: float) -> str:
 
 @mcp.tool()
 def get_patient_demographics(
-    start_date: str = "2022-01-01",
-    end_date: str = "2022-12-31",
+    start_date: str = "2018-01-01",
+    end_date: str = "2018-12-31",
     age_groups: bool = True
 ) -> Dict[str, Any]:
     """
@@ -82,12 +82,12 @@ def get_patient_demographics(
     """
     base_query = f"""
     SELECT 
-        COUNT(DISTINCT patient_id) as total_patients,
-        AVG(EXTRACT(YEAR FROM CURRENT_DATE()) - birth_year) as avg_age,
-        COUNTIF(gender = 'female') / COUNT(*) * 100 as female_pct,
-        COUNTIF(gender = 'male') / COUNT(*) * 100 as male_pct
+        COUNT(DISTINCT p.person_id) as total_patients,
+        AVG(p.age) as avg_age,
+        SAFE_DIVIDE(COUNTIF(p.sex = 'female'), COUNT(*)) * 100 as female_pct,
+        SAFE_DIVIDE(COUNTIF(p.sex = 'male'), COUNT(*)) * 100 as male_pct
     FROM `{DATASET_PREFIX}core.patient` p
-    INNER JOIN `{DATASET_PREFIX}core.eligibility` e ON p.patient_id = e.patient_id
+    INNER JOIN `{DATASET_PREFIX}core.eligibility` e ON p.person_id = e.person_id
     WHERE e.enrollment_start_date <= '{end_date}'
       AND e.enrollment_end_date >= '{start_date}'
     """
@@ -98,26 +98,16 @@ def get_patient_demographics(
     if age_groups:
         age_group_query = f"""
         SELECT 
-            CASE 
-                WHEN age < 18 THEN '0-17'
-                WHEN age BETWEEN 18 AND 34 THEN '18-34'
-                WHEN age BETWEEN 35 AND 54 THEN '35-54'
-                WHEN age BETWEEN 55 AND 64 THEN '55-64'
-                WHEN age >= 65 THEN '65+'
-            END as age_group,
+            p.age_group,
             COUNT(*) as count,
-            COUNT(*) / SUM(COUNT(*)) OVER() * 100 as percentage
-        FROM (
-            SELECT 
-                patient_id,
-                EXTRACT(YEAR FROM CURRENT_DATE()) - birth_year as age
-            FROM `{DATASET_PREFIX}core.patient` p
-            INNER JOIN `{DATASET_PREFIX}core.eligibility` e ON p.patient_id = e.patient_id
-            WHERE e.enrollment_start_date <= '{end_date}'
-              AND e.enrollment_end_date >= '{start_date}'
-        )
-        GROUP BY age_group
-        ORDER BY age_group
+            SAFE_DIVIDE(COUNT(*), SUM(COUNT(*)) OVER()) * 100 as percentage
+        FROM `{DATASET_PREFIX}core.patient` p
+        INNER JOIN `{DATASET_PREFIX}core.eligibility` e ON p.person_id = e.person_id
+        WHERE e.enrollment_start_date <= '{end_date}'
+          AND e.enrollment_end_date >= '{start_date}'
+          AND p.age_group IS NOT NULL
+        GROUP BY p.age_group
+        ORDER BY p.age_group
         """
         
         age_df = execute_query(age_group_query)
@@ -127,8 +117,8 @@ def get_patient_demographics(
 
 @mcp.tool()
 def get_utilization_summary(
-    start_date: str = "2022-01-01",
-    end_date: str = "2022-12-31",
+    start_date: str = "2018-01-01",
+    end_date: str = "2018-12-31",
     service_category: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -150,7 +140,7 @@ def get_utilization_summary(
     WITH utilization_stats AS (
         SELECT 
             COUNT(DISTINCT claim_id) as total_claims,
-            COUNT(DISTINCT patient_id) as unique_patients,
+            COUNT(DISTINCT person_id) as unique_patients,
             SUM(paid_amount) as total_paid,
             SUM(allowed_amount) as total_allowed,
             AVG(paid_amount) as avg_paid_per_claim,
@@ -163,7 +153,7 @@ def get_utilization_summary(
             service_category_1,
             COUNT(*) as claim_count,
             SUM(paid_amount) as total_paid,
-            COUNT(*) / SUM(COUNT(*)) OVER() * 100 as percentage_of_claims
+            SAFE_DIVIDE(COUNT(*), SUM(COUNT(*)) OVER()) * 100 as percentage_of_claims
         FROM `{DATASET_PREFIX}core.medical_claim`
         {where_clause}
         GROUP BY service_category_1
@@ -182,7 +172,7 @@ def get_utilization_summary(
         service_category_1,
         COUNT(*) as claim_count,
         SUM(paid_amount) as total_paid,
-        COUNT(*) / SUM(COUNT(*)) OVER() * 100 as percentage_of_claims
+        SAFE_DIVIDE(COUNT(*), SUM(COUNT(*)) OVER()) * 100 as percentage_of_claims
     FROM `{DATASET_PREFIX}core.medical_claim`
     {where_clause}
     GROUP BY service_category_1
@@ -197,8 +187,8 @@ def get_utilization_summary(
 
 @mcp.tool() 
 def get_pmpm_analysis(
-    start_date: str = "2022-01-01",
-    end_date: str = "2022-12-31",
+    start_date: str = "2018-01-01",
+    end_date: str = "2018-12-31",
     payer: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -218,12 +208,12 @@ def get_pmpm_analysis(
     
     query = f"""
     SELECT 
-        AVG(total_allowed_pmpm) as avg_total_allowed_pmpm,
-        AVG(total_paid_pmpm) as avg_total_paid_pmpm,
-        AVG(inpatient_allowed_pmpm) as avg_inpatient_allowed_pmpm,
-        AVG(outpatient_allowed_pmpm) as avg_outpatient_allowed_pmpm,
-        AVG(office_visit_allowed_pmpm) as avg_office_visit_allowed_pmpm,
-        AVG(ancillary_allowed_pmpm) as avg_ancillary_allowed_pmpm,
+        AVG(SAFE_DIVIDE(total_allowed, member_months)) as avg_total_allowed_pmpm,
+        AVG(SAFE_DIVIDE(total_paid, member_months)) as avg_total_paid_pmpm,
+        AVG(SAFE_DIVIDE(inpatient_allowed, member_months)) as avg_inpatient_allowed_pmpm,
+        AVG(SAFE_DIVIDE(outpatient_allowed, member_months)) as avg_outpatient_allowed_pmpm,
+        AVG(SAFE_DIVIDE(office_based_allowed, member_months)) as avg_office_visit_allowed_pmpm,
+        AVG(SAFE_DIVIDE(ancillary_allowed, member_months)) as avg_ancillary_allowed_pmpm,
         COUNT(DISTINCT year_month) as months_analyzed,
         SUM(member_months) as total_member_months
     FROM `{DATASET_PREFIX}financial_pmpm.pmpm_payer`
@@ -237,8 +227,8 @@ def get_pmpm_analysis(
     trend_query = f"""
     SELECT 
         year_month,
-        AVG(total_allowed_pmpm) as monthly_allowed_pmpm,
-        AVG(total_paid_pmpm) as monthly_paid_pmpm,
+        AVG(SAFE_DIVIDE(total_allowed, member_months)) as monthly_allowed_pmpm,
+        AVG(SAFE_DIVIDE(total_paid, member_months)) as monthly_paid_pmpm,
         SUM(member_months) as member_months
     FROM `{DATASET_PREFIX}financial_pmpm.pmpm_payer`
     {where_clause}
@@ -254,51 +244,99 @@ def get_pmpm_analysis(
 @mcp.tool()
 def get_quality_measures_summary(
     measure_name: Optional[str] = None,
-    year: str = "2022"
+    year: str = "2018"
 ) -> Dict[str, Any]:
     """
     Get quality measures summary for the specified year.
     
     Args:
-        measure_name: Optional filter for specific measure
+        measure_name: Optional filter for specific measure (use column names like 'adh_diabetes', 'cqm_130', etc.)
         year: Year for analysis (YYYY format)
         
     Returns:
         Dictionary containing quality measure results
     """
-    where_clause = f"WHERE performance_period_end LIKE '{year}%'"
+    
+    # Get the structure of available measures
     if measure_name:
-        where_clause += f" AND measure_name = '{measure_name}'"
-    
-    query = f"""
-    SELECT 
-        measure_name,
-        measure_version,
-        numerator,
-        denominator,
-        ROUND(performance_rate * 100, 2) as performance_rate_pct,
-        performance_flag
-    FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-    {where_clause}
-    ORDER BY measure_name
-    """
-    
-    df = execute_query(query)
-    result = {
-        'measures_count': len(df),
-        'measures': df.to_dict('records')
-    }
-    
-    if len(df) > 0:
-        result['avg_performance_rate'] = df['performance_rate_pct'].mean()
-        result['measures_meeting_target'] = (df['performance_flag'] == 'Pass').sum()
+        # Filter for specific measure if provided
+        query = f"""
+        SELECT 
+            COUNT(DISTINCT person_id) as total_patients,
+            SUM(CASE WHEN {measure_name} = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN {measure_name} IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN {measure_name} = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN {measure_name} IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        """
+        
+        df = execute_query(query)
+        result = df.iloc[0].to_dict()
+        result['measure_name'] = measure_name
+        
+    else:
+        # Get summary for all measures
+        query = f"""
+        SELECT 
+            'adh_diabetes' as measure_name,
+            SUM(CASE WHEN adh_diabetes = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN adh_diabetes IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_diabetes = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_diabetes IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        
+        UNION ALL
+        
+        SELECT 
+            'adh_ras' as measure_name,
+            SUM(CASE WHEN adh_ras = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN adh_ras IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_ras = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_ras IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        
+        UNION ALL
+        
+        SELECT 
+            'adh_statins' as measure_name,
+            SUM(CASE WHEN adh_statins = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN adh_statins IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_statins = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_statins IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        
+        UNION ALL
+        
+        SELECT 
+            'cqm_130' as measure_name,
+            SUM(CASE WHEN cqm_130 = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN cqm_130 IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN cqm_130 = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN cqm_130 IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        
+        UNION ALL
+        
+        SELECT 
+            'cqm_438' as measure_name,
+            SUM(CASE WHEN cqm_438 = 1 THEN 1 ELSE 0 END) as numerator,
+            COUNT(CASE WHEN cqm_438 IS NOT NULL THEN person_id END) as denominator,
+            ROUND(SAFE_DIVIDE(SUM(CASE WHEN cqm_438 = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN cqm_438 IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
+        FROM `{DATASET_PREFIX}quality_measures.summary_wide`
+        
+        ORDER BY measure_name
+        """
+        
+        df = execute_query(query)
+        result = {
+            'measures_count': len(df),
+            'measures': df.to_dict('records')
+        }
+        
+        if len(df) > 0:
+            result['avg_performance_rate'] = df['performance_rate_pct'].mean()
     
     return result
 
 @mcp.tool()
 def get_chronic_conditions_prevalence(
     condition_category: Optional[str] = None,
-    year: str = "2022"
+    year: str = "2018"
 ) -> Dict[str, Any]:
     """
     Get chronic conditions prevalence analysis.
@@ -317,12 +355,12 @@ def get_chronic_conditions_prevalence(
     query = f"""
     SELECT 
         condition_family,
-        COUNT(DISTINCT patient_id) as patient_count,
-        COUNT(DISTINCT patient_id) / (
-            SELECT COUNT(DISTINCT patient_id) 
+        COUNT(DISTINCT person_id) as patient_count,
+        SAFE_DIVIDE(COUNT(DISTINCT person_id), (
+            SELECT COUNT(DISTINCT person_id) 
             FROM `{DATASET_PREFIX}core.condition` 
             WHERE condition_date LIKE '{year}%'
-        ) * 100 as prevalence_rate
+        )) * 100 as prevalence_rate
     FROM `{DATASET_PREFIX}chronic_conditions.tuva_chronic_conditions_long`
     {where_clause}
     GROUP BY condition_family
@@ -341,7 +379,7 @@ def get_chronic_conditions_prevalence(
 @mcp.tool()
 def get_high_cost_patients(
     cost_threshold: float = 10000.0,
-    year: str = "2022",
+    year: str = "2018",
     limit: int = 100
 ) -> Dict[str, Any]:
     """
@@ -358,7 +396,7 @@ def get_high_cost_patients(
     query = f"""
     WITH patient_costs AS (
         SELECT 
-            patient_id,
+            person_id,
             SUM(paid_amount) as total_paid,
             SUM(allowed_amount) as total_allowed,
             COUNT(DISTINCT claim_id) as total_claims,
@@ -366,18 +404,18 @@ def get_high_cost_patients(
             COUNT(DISTINCT CASE WHEN claim_type = 'professional' THEN claim_id END) as outpatient_claims
         FROM `{DATASET_PREFIX}core.medical_claim`
         WHERE EXTRACT(YEAR FROM claim_start_date) = {year}
-        GROUP BY patient_id
+        GROUP BY person_id
         HAVING total_paid >= {cost_threshold}
         ORDER BY total_paid DESC
         LIMIT {limit}
     )
     SELECT 
         pc.*,
-        p.birth_year,
-        p.gender,
-        EXTRACT(YEAR FROM CURRENT_DATE()) - p.birth_year as age
+        EXTRACT(YEAR FROM p.birth_date) as birth_year,
+        p.sex as gender,
+        p.age
     FROM patient_costs pc
-    JOIN `{DATASET_PREFIX}core.patient` p ON pc.patient_id = p.patient_id
+    JOIN `{DATASET_PREFIX}core.patient` p ON pc.person_id = p.person_id
     ORDER BY pc.total_paid DESC
     """
     
@@ -394,7 +432,7 @@ def get_high_cost_patients(
 
 @mcp.tool()
 def get_readmissions_analysis(
-    year: str = "2022",
+    year: str = "2018",
     condition_category: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -415,7 +453,7 @@ def get_readmissions_analysis(
     SELECT 
         COUNT(DISTINCT encounter_id) as total_encounters,
         COUNT(DISTINCT CASE WHEN readmission_flag = 1 THEN encounter_id END) as readmissions,
-        COUNT(DISTINCT CASE WHEN readmission_flag = 1 THEN encounter_id END) / COUNT(DISTINCT encounter_id) * 100 as readmission_rate,
+        SAFE_DIVIDE(COUNT(DISTINCT CASE WHEN readmission_flag = 1 THEN encounter_id END), COUNT(DISTINCT encounter_id)) * 100 as readmission_rate,
         AVG(length_of_stay) as avg_los,
         SUM(total_paid) as total_cost
     FROM `{DATASET_PREFIX}readmissions.encounter_augmented`
@@ -429,7 +467,7 @@ def get_readmissions_analysis(
 
 @mcp.tool()
 def get_hcc_risk_scores(
-    year: str = "2022",
+    year: str = "2018",
     limit: int = 1000
 ) -> Dict[str, Any]:
     """
@@ -444,12 +482,13 @@ def get_hcc_risk_scores(
     """
     query = f"""
     SELECT 
-        patient_id,
-        hcc_risk_score,
-        COUNT(DISTINCT hcc_code) as hcc_condition_count
+        person_id,
+        blended_risk_score as hcc_risk_score,
+        member_months
     FROM `{DATASET_PREFIX}cms_hcc.patient_risk_scores`
     WHERE payment_year = {year}
-    ORDER BY hcc_risk_score DESC
+      AND blended_risk_score IS NOT NULL
+    ORDER BY blended_risk_score DESC
     LIMIT {limit}
     """
     
