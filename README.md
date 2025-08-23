@@ -301,6 +301,137 @@ print(f'Found {result[\"total_patients\"]} patients')
 "
 ```
 
+## Docker Deployment
+
+Run the healthcare MCP server in a Docker container for easy deployment and isolation.
+
+### Quick Start
+
+1. **Build and run with Docker script:**
+```bash
+./scripts/docker-deploy.sh
+```
+
+2. **Manual Docker commands:**
+```bash
+# Build the image
+docker build -t healthcare-mcp-server .
+
+# Run the container
+docker run -d \
+  --name healthcare-mcp-server \
+  --port 8000:8000 \
+  --env-file .env \
+  healthcare-mcp-server
+```
+
+### Docker Script Options
+
+```bash
+# Custom port and container name
+./scripts/docker-deploy.sh --port 8080 --name my-mcp-server
+
+# Build only (don't run)
+./scripts/docker-deploy.sh --build-only
+
+# Help
+./scripts/docker-deploy.sh --help
+```
+
+### Docker Compose (Optional)
+
+Create a `docker-compose.yml` for easier management:
+```yaml
+version: '3.8'
+services:
+  healthcare-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+```
+
+## Cloud Run Deployment
+
+Deploy to Google Cloud Run for scalable, serverless hosting.
+
+### Prerequisites
+
+- Google Cloud Project with billing enabled
+- `gcloud` CLI installed and authenticated
+- Required APIs will be enabled automatically
+
+### Quick Start
+
+1. **Deploy with Cloud Run script:**
+```bash
+./scripts/cloud-run-deploy.sh YOUR_PROJECT_ID
+```
+
+2. **With custom configuration:**
+```bash
+./scripts/cloud-run-deploy.sh MY_PROJECT \
+  --region us-west1 \
+  --dataset-prefix my_tuva_data \
+  --service-name my-healthcare-server
+```
+
+### Manual Cloud Run Deployment
+
+```bash
+# Enable required APIs
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com
+
+# Build and deploy with Cloud Build
+gcloud builds submit --config cloudbuild.yaml
+
+# Or deploy directly
+gcloud run deploy healthcare-mcp-server \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+### Cloud Run Configuration
+
+- **Memory**: 1GB (configurable)
+- **CPU**: 1 vCPU (configurable) 
+- **Concurrency**: 100 requests per instance
+- **Autoscaling**: 0-10 instances
+- **Authentication**: Uses Google Cloud ADC
+
+### Environment Variables for Cloud Run
+
+Set these in the Cloud Run service:
+- `GCP_PROJECT_ID`: Your Google Cloud Project ID
+- `BIGQUERY_DATASET_PREFIX`: Your dataset prefix (e.g., `tuva_synthetic_data`)
+
+### MCP Client Configuration for Cloud Run
+
+Once deployed, configure your MCP client:
+```json
+{
+  "mcpServers": {
+    "healthcare-analytics": {
+      "command": "curl",
+      "args": ["-X", "POST", "https://your-service-url/mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+## Deployment Comparison
+
+| Option | Best For | Pros | Cons |
+|--------|----------|------|----- |
+| **Local Development** | Testing, development | Full control, easy debugging | Requires local setup |
+| **Docker** | Small teams, on-premises | Portable, isolated, consistent | Requires Docker knowledge |
+| **Cloud Run** | Production, scale | Serverless, auto-scaling, managed | Cloud vendor lock-in |
+
 ## Troubleshooting
 
 ### Common Issues
@@ -309,6 +440,34 @@ print(f'Found {result[\"total_patients\"]} patients')
 2. **Dataset Not Found**: Verify your `BIGQUERY_DATASET_PREFIX` matches your data location
 3. **Permission Denied**: Confirm your service account has BigQuery viewer/user roles
 4. **Import Errors**: Ensure all dependencies are installed with `uv pip install -r requirements.txt`
+5. **Docker Build Fails**: Check that Docker is running and you have sufficient disk space
+6. **Cloud Run Deploy Fails**: Verify your Google Cloud project has billing enabled
+
+### Docker Troubleshooting
+
+```bash
+# View container logs
+docker logs healthcare-mcp-server
+
+# Debug inside container
+docker exec -it healthcare-mcp-server bash
+
+# Check container status
+docker ps -a
+```
+
+### Cloud Run Troubleshooting
+
+```bash
+# View service logs
+gcloud run services logs tail healthcare-mcp-server --region=us-central1
+
+# Check service status
+gcloud run services describe healthcare-mcp-server --region=us-central1
+
+# View recent builds
+gcloud builds list --limit=10
+```
 
 ### Debugging
 

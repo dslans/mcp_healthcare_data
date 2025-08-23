@@ -1,0 +1,70 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation and examples
+*.md
+docs/
+examples/
+.env.example
+mcp_config.json.example
+
+# Test files
+test_*.py
+tests/
+*_test.py
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Deployment files (we'll copy these separately if needed)
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Project specific
+PROJECT_SUMMARY.md
+setup_auth.sh
