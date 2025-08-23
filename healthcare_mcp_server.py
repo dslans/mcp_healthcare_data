@@ -11,7 +11,9 @@ import os
 import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime, date
+from decimal import Decimal
 import pandas as pd
+import numpy as np
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from dotenv import load_dotenv
@@ -51,7 +53,19 @@ def execute_query(query: str) -> pd.DataFrame:
     """Execute a BigQuery query and return results as a DataFrame."""
     try:
         job = client.query(query)
-        return job.to_dataframe()
+        df = job.to_dataframe()
+        
+        # Convert Decimal columns to float for JSON serialization
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                # Check if column contains Decimal objects
+                if len(df[col]) > 0 and isinstance(df[col].iloc[0], Decimal):
+                    df[col] = df[col].astype(float)
+                # Also handle NaN Decimal objects
+                elif df[col].apply(lambda x: isinstance(x, Decimal) if pd.notna(x) else False).any():
+                    df[col] = df[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x)
+        
+        return df
     except Exception as e:
         raise Exception(f"Query execution failed: {str(e)}")
 
@@ -62,6 +76,19 @@ def format_currency(amount: float) -> str:
 def format_percentage(value: float) -> str:
     """Format value as percentage."""
     return f"{value:.1f}%"
+
+def convert_decimal_values(obj):
+    """Recursively convert Decimal objects to float in dictionaries and lists."""
+    if isinstance(obj, dict):
+        return {key: convert_decimal_values(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimal_values(item) for item in obj]
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    elif pd.isna(obj) and isinstance(obj, (pd.Series, np.floating)):
+        return None
+    else:
+        return obj
 
 @mcp.tool()
 def get_patient_demographics(
@@ -113,7 +140,7 @@ def get_patient_demographics(
         age_df = execute_query(age_group_query)
         result['age_groups'] = age_df.to_dict('records')
     
-    return result
+    return convert_decimal_values(result)
 
 @mcp.tool()
 def get_utilization_summary(
@@ -428,7 +455,8 @@ def get_high_cost_patients(
         'patients': df.to_dict('records')
     }
     
-    return result
+    # Convert any remaining Decimal objects in the result
+    return convert_decimal_values(result)
 
 @mcp.tool()
 def get_readmissions_analysis(
