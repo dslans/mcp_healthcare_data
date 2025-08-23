@@ -112,6 +112,23 @@ Start the MCP server:
 fastmcp run healthcare_mcp_server.py
 ```
 
+Set up the config with your IDE, CLI assistant, etc.
+```json
+{
+  "mcpServers": {
+    "healthcare-analytics": {
+      "command": "python",
+      "args": ["/path/to/your/healthcare_mcp_server.py"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/your/service-account-key.json",
+        "GCP_PROJECT_ID": "your-project-id",
+        "BIGQUERY_DATASET_PREFIX": "your_dataset_prefix."
+      }
+    }
+  }
+}
+```
+
 ### Available Tools
 
 #### 1. Patient Demographics Analysis
