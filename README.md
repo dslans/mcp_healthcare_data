@@ -476,3 +476,97 @@ Enable debug logging:
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
+
+## Warp (or IDE) Integration
+
+### MCP Bridge
+
+For an integrated experience, use the MCP bridge that provides native MCP tools:
+
+1. **Install the bridge dependencies:**
+```bash
+pip install httpx
+```
+
+2. **Test the bridge:**
+```bash
+python healthcare_mcp_bridge.py --test
+```
+
+3. **Configure Warp with the bridge:**
+```json
+{
+  "mcpServers": {
+    "healthcare-analytics": {
+      "command": "python",
+      "args": ["/absolute/path/to/healthcare_mcp_bridge.py"],
+      "env": {
+        "CLOUD_RUN_URL": "https://healthcare-mcp-server-842907846470.us-central1.run.app"
+      }
+    }
+  }
+}
+```
+
+4. **Use natural language commands:**
+```
+"Get patient demographics for 2018"
+"Show me high-cost patients with threshold over $20,000"
+"Analyze readmissions for diabetes patients"
+```
+
+**Pros:**
+- ✅ Native MCP integration
+- ✅ Natural language interface
+- ✅ Automatic parameter handling
+- ✅ Type-safe tool definitions
+
+**Cons:**
+- ❌ Requires setup
+- ❌ Additional dependency layer
+
+
+### Available API Endpoints
+
+All endpoints accept JSON POST requests unless otherwise noted:
+
+| Endpoint | Method | Description |
+|----------|--------|--------------|
+| `/health` | GET | Service health check |
+| `/api/info` | GET | API documentation |
+| `/analytics/demographics` | POST | Patient demographics analysis |
+| `/analytics/utilization` | POST | Healthcare utilization summary |
+| `/analytics/pmpm` | POST | PMPM financial analysis |
+| `/analytics/quality-measures` | POST | Quality measures summary |
+| `/analytics/chronic-conditions` | POST | Chronic conditions prevalence |
+| `/analytics/high-cost-patients` | POST | High-cost patient identification |
+| `/analytics/readmissions` | POST | Readmissions analysis |
+| `/analytics/hcc-risk-scores` | POST | HCC risk scores analysis |
+
+### Example API Request Bodies
+
+**Demographics:**
+```json
+{
+  "start_date": "2018-01-01",
+  "end_date": "2018-12-31",
+  "age_groups": true
+}
+```
+
+**High-Cost Patients:**
+```json
+{
+  "cost_threshold": 10000.0,
+  "year": "2018",
+  "limit": 100
+}
+```
+
+**Quality Measures:**
+```json
+{
+  "measure_name": "adh_diabetes",
+  "year": "2018"
+}
+```

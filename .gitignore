@@ -5,6 +5,12 @@
 .env.test
 .env.production
 
+# configs
+warp_cloud_run_config.json
+warp_mcp_config.json
+warp_bridge_config.json
+tools.yaml
+
 # Python cache and compiled files
 __pycache__/
 *.pyc

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "healthcare-analytics": {
+      "command": "python",
+      "args": ["/path/to/healthcare_mcp_bridge.py"],
+      "env": {
+        "CLOUD_RUN_URL": "https://healthcare-mcp-server-842907846470.us-central1.run.app"
+      }
+    }
+  }
+}
