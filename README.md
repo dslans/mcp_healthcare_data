@@ -117,8 +117,8 @@ fastmcp run healthcare_mcp_server.py
 #### 1. Patient Demographics Analysis
 ```python
 get_patient_demographics(
-    start_date="2022-01-01",
-    end_date="2022-12-31", 
+    start_date="2018-01-01",
+    end_date="2018-12-31", 
     age_groups=True
 )
 ```
@@ -127,8 +127,8 @@ Returns demographic breakdown including age groups, gender distribution, and tot
 #### 2. Healthcare Utilization Summary
 ```python
 get_utilization_summary(
-    start_date="2022-01-01",
-    end_date="2022-12-31",
+    start_date="2018-01-01",
+    end_date="2018-12-31",
     service_category="Emergency Department"  # Optional
 )
 ```
@@ -137,8 +137,8 @@ Provides comprehensive utilization metrics including claims counts, costs, and s
 #### 3. PMPM Financial Analysis
 ```python
 get_pmpm_analysis(
-    start_date="2022-01-01",
-    end_date="2022-12-31",
+    start_date="2018-01-01",
+    end_date="2018-12-31",
     payer="Medicare"  # Optional
 )
 ```
@@ -147,8 +147,8 @@ Calculates Per Member Per Month costs across different service categories with t
 #### 4. Quality Measures Summary
 ```python
 get_quality_measures_summary(
-    measure_name="Diabetes HbA1c Testing",  # Optional
-    year="2022"
+    measure_name="adh_diabetes",  # Optional - use actual column names like 'adh_diabetes', 'cqm_130', etc.
+    year="2018"
 )
 ```
 Returns quality measure performance rates and compliance flags for HEDIS and clinical measures.
@@ -157,7 +157,7 @@ Returns quality measure performance rates and compliance flags for HEDIS and cli
 ```python
 get_chronic_conditions_prevalence(
     condition_category="Diabetes",  # Optional
-    year="2022"
+    year="2018"
 )
 ```
 Analyzes prevalence rates for chronic conditions across the patient population.
@@ -166,7 +166,7 @@ Analyzes prevalence rates for chronic conditions across the patient population.
 ```python
 get_high_cost_patients(
     cost_threshold=10000.0,
-    year="2022",
+    year="2018",
     limit=100
 )
 ```
@@ -175,7 +175,7 @@ Identifies patients exceeding cost thresholds for case management prioritization
 #### 7. Readmissions Analysis
 ```python
 get_readmissions_analysis(
-    year="2022",
+    year="2018",
     condition_category="Heart Failure"  # Optional
 )
 ```
@@ -184,7 +184,7 @@ Calculates 30-day readmission rates and patterns for quality improvement.
 #### 8. HCC Risk Score Analysis
 ```python
 get_hcc_risk_scores(
-    year="2022",
+    year="2018",
     limit=1000
 )
 ```
@@ -222,12 +222,12 @@ risk_scores = get_hcc_risk_scores()
 ```python
 # Generate monthly financial and quality reports
 monthly_pmpm = get_pmpm_analysis(
-    start_date="2022-01-01",
-    end_date="2022-01-31"
+    start_date="2018-01-01",
+    end_date="2018-01-31"
 )
 
-monthly_quality = get_quality_measures_summary(year="2022")
-monthly_readmissions = get_readmissions_analysis(year="2022")
+monthly_quality = get_quality_measures_summary(year="2018")
+monthly_readmissions = get_readmissions_analysis(year="2018")
 ```
 
 ## Development
@@ -246,7 +246,7 @@ Example:
 @mcp.tool()
 def get_medication_adherence(
     therapeutic_class: str,
-    year: str = "2022"
+    year: str = "2018"
 ) -> Dict[str, Any]:
     """
     Calculate medication adherence rates for a therapeutic class.
@@ -260,7 +260,7 @@ def get_medication_adherence(
     """
     query = f"""
     SELECT 
-        COUNT(DISTINCT patient_id) as total_patients,
+        COUNT(DISTINCT person_id) as total_patients,
         AVG(pdc_score) as avg_adherence_rate
     FROM `{DATASET_PREFIX}pharmacy.adherence_scores`
     WHERE therapeutic_class = '{therapeutic_class}'
