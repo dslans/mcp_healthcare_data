@@ -300,14 +300,3 @@ Enable debug logging:
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
-
-## License
-
-Apache 2.0 License
