@@ -5,7 +5,7 @@
 .env.test
 .env.production
 
-# configs
+# Config files (but allow examples)
 warp_cloud_run_config.json
 warp_mcp_config.json
 warp_bridge_config.json

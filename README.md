@@ -501,7 +501,7 @@ python healthcare_mcp_bridge.py --test
       "command": "python",
       "args": ["/absolute/path/to/healthcare_mcp_bridge.py"],
       "env": {
-        "CLOUD_RUN_URL": "https://healthcare-mcp-server-842907846470.us-central1.run.app"
+        "CLOUD_RUN_URL": "https://your-healthcare-service.run.app"
       }
     }
   }

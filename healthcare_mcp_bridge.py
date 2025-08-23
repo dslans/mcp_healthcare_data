@@ -18,7 +18,7 @@ Configure in your MCP client:
       "command": "python",
       "args": ["/path/to/healthcare_mcp_bridge.py"],
       "env": {
-        "CLOUD_RUN_URL": "https://healthcare-mcp-server-842907846470.us-central1.run.app"
+        "CLOUD_RUN_URL": "https://your-healthcare-service.run.app"
       }
     }
   }
@@ -36,7 +36,7 @@ from fastmcp import FastMCP
 mcp = FastMCP("Healthcare Analytics Bridge")
 
 # Cloud Run service URL
-CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "https://healthcare-mcp-server-842907846470.us-central1.run.app")
+CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "https://your-healthcare-service.run.app")
 
 async def call_api(endpoint: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
     """Call the Cloud Run HTTP API endpoint"""
