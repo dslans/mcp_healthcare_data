@@ -149,8 +149,6 @@ python test_server.py
 ```
 
 6. **Configure your MCP client:**
-
-For **Claude Desktop**, edit `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
