@@ -327,15 +327,14 @@ def get_pmpm_analysis(
     
     query = f"""
     SELECT 
-        AVG(SAFE_DIVIDE(total_allowed, member_months)) as avg_total_allowed_pmpm,
-        AVG(SAFE_DIVIDE(total_paid, member_months)) as avg_total_paid_pmpm,
-        AVG(SAFE_DIVIDE(inpatient_allowed, member_months)) as avg_inpatient_allowed_pmpm,
-        AVG(SAFE_DIVIDE(outpatient_allowed, member_months)) as avg_outpatient_allowed_pmpm,
-        AVG(SAFE_DIVIDE(office_based_allowed, member_months)) as avg_office_visit_allowed_pmpm,
-        AVG(SAFE_DIVIDE(ancillary_allowed, member_months)) as avg_ancillary_allowed_pmpm,
-        COUNT(DISTINCT year_month) as months_analyzed,
-        SUM(member_months) as total_member_months
-    FROM `{DATASET_PREFIX}financial_pmpm.pmpm_payer`
+        COUNT(DISTINCT person_id || year_month) as total_member_months,
+        SAFE_DIVIDE(SUM(total_allowed), COUNT(DISTINCT person_id || year_month)) as total_allowed_pmpm,
+        SAFE_DIVIDE(SUM(total_paid), COUNT(DISTINCT person_id || year_month)) as total_paid_pmpm,
+        SAFE_DIVIDE(SUM(inpatient_allowed), COUNT(DISTINCT person_id || year_month)) as inpatient_allowed_pmpm,
+        SAFE_DIVIDE(SUM(outpatient_allowed), COUNT(DISTINCT person_id || year_month)) as outpatient_allowed_pmpm,
+        SAFE_DIVIDE(SUM(office_based_allowed), COUNT(DISTINCT person_id || year_month)) as office_visit_allowed_pmpm,
+        SAFE_DIVIDE(SUM(ancillary_allowed), COUNT(DISTINCT person_id || year_month)) as avg_ancillary_allowed_pmpm
+    FROM `{DATASET_PREFIX}financial_pmpm.pmpm_prep`
     WHERE {where_clause}
     """
     
@@ -346,10 +345,10 @@ def get_pmpm_analysis(
     trend_query = f"""
     SELECT 
         year_month,
-        AVG(SAFE_DIVIDE(total_allowed, member_months)) as monthly_allowed_pmpm,
-        AVG(SAFE_DIVIDE(total_paid, member_months)) as monthly_paid_pmpm,
-        SUM(member_months) as member_months
-    FROM `{DATASET_PREFIX}financial_pmpm.pmpm_payer`
+        SAFE_DIVIDE(SUM(total_allowed), COUNT(DISTINCT person_id || year_month)) as monthly_allowed_pmpm,
+        SAFE_DIVIDE(SUM(total_paid), COUNT(DISTINCT person_id || year_month)) as monthly_paid_pmpm,
+        COUNT(DISTINCT person_id || year_month) as member_months
+    FROM `{DATASET_PREFIX}financial_pmpm.pmpm_prep`
     WHERE {where_clause}
     GROUP BY year_month
     ORDER BY year_month
