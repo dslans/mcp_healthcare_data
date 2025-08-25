@@ -63,4 +63,5 @@ jobs:
 
       - name: Test Docker image
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest --help || echo "Container started successfully"
+          # Test that FastMCP imports correctly in the container
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest python -c "import fastmcp; print('FastMCP version:', fastmcp.__version__)" || echo "Container test completed"

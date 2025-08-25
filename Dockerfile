@@ -7,9 +7,14 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
+# Install system dependencies including build tools for FastMCP 2.11.3
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
@@ -18,7 +23,21 @@ WORKDIR /app
 # Copy requirements first for better Docker layer caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Upgrade pip and install wheel for better dependency resolution
+RUN pip install --upgrade pip setuptools wheel
+
+# Install dependencies in stages to handle potential conflicts
+# First install core build dependencies
+RUN pip install --no-cache-dir \
+    pydantic==2.11.7 \
+    pydantic-core==2.33.2 \
+    typing-extensions==4.14.1 \
+    cryptography==45.0.6
+
+# Then install FastMCP and its dependencies
+RUN pip install --no-cache-dir fastmcp==2.11.3 mcp==1.12.4
+
+# Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
