@@ -29,6 +29,62 @@ To get a quick MCP setup that can be used to service most of the common data que
 ![alt text](sample_prompt.png)
 ![alt text](sample_response.png)
 
+## Example Questions
+
+Once your MCP server is configured, you can ask natural language questions in your MCP client (Claude Desktop, Warp, etc.). Here are some examples:
+
+### 📊 **Population Health & Demographics**
+- "Show me the patient demographics for 2018, including age group breakdowns"
+- "What's the gender distribution of our patient population?"
+- "How many patients do we have enrolled and what's the average age?"
+
+### 💰 **Financial & Cost Analysis**
+- "Calculate the PMPM costs for all service categories in 2018"
+- "Who are our highest cost patients above $20,000 in total spend?"
+- "Show me per-member-per-month analysis for Medicare patients only"
+- "What are the top 10 most expensive service categories by total cost?"
+
+### 🏥 **Healthcare Utilization**
+- "Analyze healthcare utilization patterns for 2018"
+- "Show me Emergency Department utilization statistics"
+- "What's the breakdown of claims by service category?"
+- "How many unique patients had medical claims last year?"
+
+### 📈 **Quality Measures & Performance**
+- "What are our quality measure performance rates for 2018?"
+- "Show me diabetes medication adherence scores"
+- "Analyze our HEDIS quality measures and compliance rates"
+- "Which quality measures are we performing well on vs. need improvement?"
+
+### 🩺 **Clinical Analytics**
+- "What's the prevalence of chronic conditions in our population?"
+- "Show me diabetes prevalence rates and patient counts"
+- "Analyze 30-day readmission rates by condition category"
+- "What are the readmission patterns for heart failure patients?"
+
+### 🎯 **Risk Adjustment & HCC**
+- "Calculate HCC risk scores for our patient population"
+- "Show me risk score distribution and identify high-risk patients"
+- "Who are the patients with the highest risk adjustment scores?"
+
+### 🔍 **Care Management**
+- "Identify patients for case management based on high costs and readmissions"
+- "Which patients have both high costs and multiple chronic conditions?"
+- "Show me patients with diabetes who also have high utilization"
+
+### 📅 **Trend Analysis**
+- "Compare January 2018 PMPM costs to December 2018"
+- "Show me quarterly utilization trends throughout 2018"
+- "How did our quality measures change over the year?"
+
+### 🏢 **Business Intelligence**
+- "Generate a comprehensive population health report for 2018"
+- "What insights can you provide about our highest cost drivers?"
+- "Summarize our value-based care performance metrics"
+- "Create an executive summary of our healthcare analytics"
+
+These questions will automatically trigger the appropriate MCP tools and return structured healthcare analytics data that can be used for reporting, decision-making, and care management.
+
 ## Setup
 
 ### Option 1: Docker Deployment (Recommended)
@@ -328,62 +384,6 @@ monthly_pmpm = get_pmpm_analysis(
 monthly_quality = get_quality_measures_summary(year="2018")
 monthly_readmissions = get_readmissions_analysis(year="2018")
 ```
-
-## Example Questions
-
-Once your MCP server is configured, you can ask natural language questions in your MCP client (Claude Desktop, Warp, etc.). Here are some examples:
-
-### 📊 **Population Health & Demographics**
-- "Show me the patient demographics for 2018, including age group breakdowns"
-- "What's the gender distribution of our patient population?"
-- "How many patients do we have enrolled and what's the average age?"
-
-### 💰 **Financial & Cost Analysis**
-- "Calculate the PMPM costs for all service categories in 2018"
-- "Who are our highest cost patients above $20,000 in total spend?"
-- "Show me per-member-per-month analysis for Medicare patients only"
-- "What are the top 10 most expensive service categories by total cost?"
-
-### 🏥 **Healthcare Utilization**
-- "Analyze healthcare utilization patterns for 2018"
-- "Show me Emergency Department utilization statistics"
-- "What's the breakdown of claims by service category?"
-- "How many unique patients had medical claims last year?"
-
-### 📈 **Quality Measures & Performance**
-- "What are our quality measure performance rates for 2018?"
-- "Show me diabetes medication adherence scores"
-- "Analyze our HEDIS quality measures and compliance rates"
-- "Which quality measures are we performing well on vs. need improvement?"
-
-### 🩺 **Clinical Analytics**
-- "What's the prevalence of chronic conditions in our population?"
-- "Show me diabetes prevalence rates and patient counts"
-- "Analyze 30-day readmission rates by condition category"
-- "What are the readmission patterns for heart failure patients?"
-
-### 🎯 **Risk Adjustment & HCC**
-- "Calculate HCC risk scores for our patient population"
-- "Show me risk score distribution and identify high-risk patients"
-- "Who are the patients with the highest risk adjustment scores?"
-
-### 🔍 **Care Management**
-- "Identify patients for case management based on high costs and readmissions"
-- "Which patients have both high costs and multiple chronic conditions?"
-- "Show me patients with diabetes who also have high utilization"
-
-### 📅 **Trend Analysis**
-- "Compare January 2018 PMPM costs to December 2018"
-- "Show me quarterly utilization trends throughout 2018"
-- "How did our quality measures change over the year?"
-
-### 🏢 **Business Intelligence**
-- "Generate a comprehensive population health report for 2018"
-- "What insights can you provide about our highest cost drivers?"
-- "Summarize our value-based care performance metrics"
-- "Create an executive summary of our healthcare analytics"
-
-These questions will automatically trigger the appropriate MCP tools and return structured healthcare analytics data that can be used for reporting, decision-making, and care management.
 
 ## Development
 
