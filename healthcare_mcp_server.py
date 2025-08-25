@@ -310,8 +310,12 @@ def get_pmpm_analysis(
     Returns:
         Dictionary containing PMPM metrics
     """
-    where_clauses = ["year_month BETWEEN @start_date AND @end_date"]
-    params = {"start_date": start_date[:7], "end_date": end_date[:7]}
+    # Convert provided dates to YYYYMM format to match year_month column
+    start_ym = start_date[:7].replace('-', '')
+    end_ym = end_date[:7].replace('-', '')
+
+    where_clauses = ["year_month BETWEEN @start_ym AND @end_ym"]
+    params = {"start_ym": start_ym, "end_ym": end_ym}
 
     if payer:
         where_clauses.append("payer = @payer")
@@ -383,7 +387,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN {measure_name} IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN {measure_name} = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN {measure_name} IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         """
         
         df = get_from_cache_or_execute(query, params=params, ttl_minutes=360)  # 6 hour cache for quality measures
@@ -399,7 +402,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN adh_diabetes IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_diabetes = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_diabetes IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         
         UNION ALL
         
@@ -409,7 +411,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN adh_ras IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_ras = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_ras IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         
         UNION ALL
         
@@ -419,7 +420,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN adh_statins IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN adh_statins = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN adh_statins IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         
         UNION ALL
         
@@ -429,7 +429,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN cqm_130 IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN cqm_130 = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN cqm_130 IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         
         UNION ALL
         
@@ -439,7 +438,6 @@ def get_quality_measures_summary(
             COUNT(CASE WHEN cqm_438 IS NOT NULL THEN person_id END) as denominator,
             ROUND(SAFE_DIVIDE(SUM(CASE WHEN cqm_438 = 1 THEN 1 ELSE 0 END), COUNT(CASE WHEN cqm_438 IS NOT NULL THEN person_id END)) * 100, 2) as performance_rate_pct
         FROM `{DATASET_PREFIX}quality_measures.summary_wide`
-        WHERE measurement_year = @year
         
         ORDER BY measure_name
         """
@@ -464,33 +462,44 @@ def get_chronic_conditions_prevalence(
     Get chronic conditions prevalence analysis.
     
     Args:
-        condition_category: Optional filter for specific condition category
+        condition_category: Optional filter for specific condition category (matches the `condition` field)
         year: Year for analysis (YYYY format)
         
     Returns:
         Dictionary containing chronic condition prevalence
     """
-    where_clauses = ["condition_date LIKE @year_like"]
-    params = {"year_like": f"{year}%"}
+    # Define the analysis window for the given year
+    start_date = f"{year}-01-01"
+    end_date = f"{year}-12-31"
+
+    where_clauses = [
+        # A condition is considered prevalent in the year if it overlaps the year window
+        "first_diagnosis_date <= DATE(@end_date)",
+        "(last_diagnosis_date IS NULL OR last_diagnosis_date >= DATE(@start_date))"
+    ]
+    params = {"start_date": start_date, "end_date": end_date, "year": int(year)}
 
     if condition_category:
-        where_clauses.append("condition_family = @condition_category")
+        where_clauses.append("`condition` = @condition_category")
         params["condition_category"] = condition_category
     
     where_clause = " AND ".join(where_clauses)
     
     query = f"""
     SELECT 
-        condition_family,
-        COUNT(DISTINCT person_id) as patient_count,
-        SAFE_DIVIDE(COUNT(DISTINCT person_id), (
-            SELECT COUNT(DISTINCT person_id) 
-            FROM `{DATASET_PREFIX}core.condition` 
-            WHERE condition_date LIKE @year_like
-        )) * 100 as prevalence_rate
+        `condition` AS condition_name,
+        COUNT(DISTINCT person_id) AS patient_count,
+        SAFE_DIVIDE(
+            COUNT(DISTINCT person_id),
+            (
+                SELECT COUNT(DISTINCT person_id)
+                FROM `{DATASET_PREFIX}core.medical_claim`
+                WHERE EXTRACT(YEAR FROM claim_start_date) = @year
+            )
+        ) * 100 AS prevalence_rate
     FROM `{DATASET_PREFIX}chronic_conditions.tuva_chronic_conditions_long`
     WHERE {where_clause}
-    GROUP BY condition_family
+    GROUP BY condition_name
     ORDER BY patient_count DESC
     LIMIT 20
     """
@@ -574,11 +583,11 @@ def get_readmissions_analysis(
     Returns:
         Dictionary containing readmission analysis
     """
-    where_clauses = ["encounter_start_date LIKE @year_like"]
-    params = {"year_like": f"{year}%"}
+    where_clauses = ["EXTRACT(YEAR FROM admit_date) = @year"]
+    params = {"year": int(year)}
 
     if condition_category:
-        where_clauses.append("primary_diagnosis_description LIKE @condition_category")
+        where_clauses.append("diagnosis_ccs LIKE @condition_category")
         params["condition_category"] = f"%{condition_category}%"
     
     where_clause = " AND ".join(where_clauses)
@@ -586,10 +595,10 @@ def get_readmissions_analysis(
     query = f"""
     SELECT 
         COUNT(DISTINCT encounter_id) as total_encounters,
-        COUNT(DISTINCT CASE WHEN readmission_flag = 1 THEN encounter_id END) as readmissions,
-        SAFE_DIVIDE(COUNT(DISTINCT CASE WHEN readmission_flag = 1 THEN encounter_id END), COUNT(DISTINCT encounter_id)) * 100 as readmission_rate,
+        COUNT(DISTINCT CASE WHEN index_admission_flag = 0 AND disqualified_encounter_flag = 0 THEN encounter_id END) as readmissions,
+        SAFE_DIVIDE(COUNT(DISTINCT CASE WHEN index_admission_flag = 0 AND disqualified_encounter_flag = 0 THEN encounter_id END), COUNT(DISTINCT encounter_id)) * 100 as readmission_rate,
         AVG(length_of_stay) as avg_los,
-        SUM(total_paid) as total_cost
+        SUM(paid_amount) as total_cost
     FROM `{DATASET_PREFIX}readmissions.encounter_augmented`
     WHERE {where_clause}
     """
