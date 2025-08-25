@@ -9,8 +9,8 @@ and financial metrics.
 
 import os
 import asyncio
-import functools
 import time
+import hashlib
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, date
 from decimal import Decimal
@@ -78,7 +78,9 @@ def get_from_cache_or_execute(
     Returns:
         DataFrame with query results
     """
-    cache_key = functools._make_key((query, str(params)), typed=False)
+    # Create a cache key by hashing query and parameters
+    cache_input = f"{query}_{str(params) if params else 'None'}"
+    cache_key = hashlib.md5(cache_input.encode('utf-8')).hexdigest()
     
     # Check if cached and still valid
     if cache_key in CACHE:
